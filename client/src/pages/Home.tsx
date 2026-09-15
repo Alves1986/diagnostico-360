@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const STORAGE_KEY = "clareza-comercial-draft";
+const STORAGE_KEY = "diagnostico-360-draft";
 
 type Answers = {
   name: string;
@@ -328,9 +328,9 @@ function getFieldValue(a: Answers, id: string) {
 
 function Logo() {
   return (
-    <div className="brand-mark" aria-label="Clareza Comercial">
+    <div className="brand-mark" aria-label="Diagnóstico 360">
       <span className="brand-bars"><i /><i /><i /></span>
-      <span><strong>Clareza</strong><small>Diagnóstico Comercial</small></span>
+      <span><strong>Diagnóstico 360</strong><small>Diagnóstico Comercial</small></span>
     </div>
   );
 }
@@ -449,7 +449,7 @@ function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const whatsAppMessage = `Olá! Fiz o diagnóstico do Clareza Comercial. Meu principal objetivo é ${answers.objective || "entender meu próximo passo"}. Hoje, meu maior desafio está em ${answers.challenge || "organizar minhas prioridades"}. Quero conversar sobre uma direção mais específica para o meu caso.`;
+  const whatsAppMessage = `Olá! Fiz o diagnóstico do Diagnóstico 360. Meu principal objetivo é ${answers.objective || "entender meu próximo passo"}. Hoje, meu maior desafio está em ${answers.challenge || "organizar minhas prioridades"}. Quero conversar sobre uma direção mais específica para o meu caso.`;
 
   const copyInternal = async () => {
     const internal = `NOVO DIAGNÓSTICO COMERCIAL\n\nLead: ${answers.name} — ${answers.company}\nSegmento: ${answers.segment}\nCargo: ${answers.role}\nWhatsApp: ${answers.whatsapp}\n\nObjetivo: ${answers.objective}\nDesafio: ${answers.challenge}\nCausa percebida: ${answers.challengeCause}\nImpacto: ${answers.impact.join(", ")}\nSe nada mudar: ${answers.consequence}\nGargalo: ${answers.bottleneck}\nImpacto no cliente: ${answers.clientComplaint}\nVisão de futuro: ${answers.futureVision}\nObstáculo futuro: ${answers.futureObstacle}\nVulnerabilidade: ${answers.vulnerability}\nO que gostaria de testar: ${answers.experiment}\nAjuda desejada: ${answers.support}\nUrgência: ${urgencyOptions.find((item) => item.value === answers.urgency)?.label}\nEnvolvidos: ${answers.decisionMakers}\nTentativas anteriores: ${answers.previousAttempts}\n\nMaturidade: ${diagnosis.maturity}% — ${diagnosis.level}\nSegmento recomendado: ${diagnosis.segment} + ${diagnosis.secondarySegment}\nTemperatura: ${diagnosis.temperature}\nPrioridade: ${diagnosis.priority}\nSolução inicial: ${diagnosis.solution}`;
@@ -484,7 +484,7 @@ function Home() {
             <div className="visual-caption"><span>01</span><span>Objetivo</span><span>02</span><span>Dor</span><span>03</span><span>Direção</span></div>
           </div>
         </section>
-        <footer className="landing-footer"><span>Um diagnóstico inicial para decisões mais claras.</span><span>© Clareza Comercial</span></footer>
+        <footer className="landing-footer"><span>Um diagnóstico inicial para decisões mais claras.</span><span>© Diagnóstico 360</span></footer>
       </main>
     );
   }
@@ -507,7 +507,7 @@ function Home() {
           <div className="result-lower-grid"><div className="next-step-card card-surface"><div className="section-kicker"><MessageCircle size={16} /> Próximo passo</div><h2>Quer entender como isso se aplica ao seu caso?</h2><p>Este diagnóstico é um ponto de partida. Uma conversa rápida ajuda a mapear o processo atual e escolher a intervenção com mais impacto.</p><button className="primary-btn" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(whatsAppMessage)}`, "_blank")}><MessageCircle size={18} /> Quero conversar pelo WhatsApp</button><small>Mensagem pronta para você revisar antes de enviar.</small></div><div className="internal-card card-surface"><div className="section-kicker"><Clipboard size={16} /> Para sua análise</div><h3>Resumo comercial pronto</h3><p>Copie as respostas, a classificação e a recomendação para continuar o atendimento no seu CRM ou WhatsApp.</p><button className="secondary-btn" onClick={copyInternal}>{copied ? <Check size={17} /> : <Copy size={17} />} {copied ? "Copiado" : "Copiar resumo interno"}</button><div className="quick-read"><span><Users size={15} /> {answers.decisionMakers || "Decisor não informado"}</span><span><Clock3 size={15} /> {urgencyOptions.find((item) => item.value === answers.urgency)?.label || "Prazo não informado"}</span></div></div></div>
           <div className="approach-note"><span className="note-number">02</span><div><b>Sugestão para a próxima conversa</b><p>{diagnosis.approach}</p></div><ChevronRight size={18} /></div>
         </section>
-        <footer className="landing-footer result-footer"><span>Clareza Comercial · diagnóstico inicial</span><button className="subtle-btn" onClick={reset}>Começar novamente <ArrowRight size={14} /></button></footer>
+        <footer className="landing-footer result-footer"><span>Diagnóstico 360 · diagnóstico inicial</span><button className="subtle-btn" onClick={reset}>Começar novamente <ArrowRight size={14} /></button></footer>
       </main>
     );
   }
