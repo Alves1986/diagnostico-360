@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 const STORAGE_KEY = "diagnostico-360-draft";
 
@@ -34,22 +35,22 @@ type Answers = {
   role: string;
   whatsapp: string;
   email: string;
-  objective: string;
+  objective: string[];
   objectiveDetails: string;
-  challenge: string;
+  challenge: string[];
   challengeCause: string;
   impact: string[];
   consequence: string;
-  bottleneck: string;
+  bottleneck: string[];
   bottleneckDetails: string;
-  clientImprovement: string;
+  clientImprovement: string[];
   clientComplaint: string;
   futureVision: string;
   futureObstacle: string;
-  vulnerability: string;
+  vulnerability: string[];
   experiment: string;
   experimentBarrier: string;
-  support: string;
+  support: string[];
   urgency: string;
   decisionMakers: string;
   previousAttempts: string;
@@ -83,22 +84,22 @@ const initialAnswers: Answers = {
   role: "",
   whatsapp: "",
   email: "",
-  objective: "",
+  objective: [],
   objectiveDetails: "",
-  challenge: "",
+  challenge: [],
   challengeCause: "",
   impact: [],
   consequence: "",
-  bottleneck: "",
+  bottleneck: [],
   bottleneckDetails: "",
-  clientImprovement: "",
+  clientImprovement: [],
   clientComplaint: "",
   futureVision: "",
   futureObstacle: "",
-  vulnerability: "",
+  vulnerability: [],
   experiment: "",
   experimentBarrier: "",
-  support: "",
+  support: [],
   urgency: "",
   decisionMakers: "",
   previousAttempts: "",
@@ -277,9 +278,12 @@ function lower(value: string) {
 }
 
 function calculateDiagnosis(a: Answers): Diagnosis {
-  const clarity = (a.objective ? 3 : 0) + (a.objectiveDetails.trim() ? 2 : 0);
-  const pain = (a.challenge ? 2 : 0) + (a.challengeCause.trim() ? 1 : 0) + (a.impact.length ? 1 : 0) + (a.consequence.trim() ? 1 : 0);
-  const structure = (a.bottleneck ? 2 : 0) + (a.bottleneckDetails.trim() ? 2 : 0) + (a.clientImprovement ? 1 : 0);
+  const objectiveText = a.objective.join(" ");
+  const challengeText = a.challenge.join(" ");
+  const bottleneckText = a.bottleneck.join(" ");
+  const clarity = (a.objective.length ? 3 : 0) + (a.objectiveDetails.trim() ? 2 : 0);
+  const pain = (a.challenge.length ? 2 : 0) + (a.challengeCause.trim() ? 1 : 0) + (a.impact.length ? 1 : 0) + (a.consequence.trim() ? 1 : 0);
+  const structure = (a.bottleneck.length ? 2 : 0) + (a.bottleneckDetails.trim() ? 2 : 0) + (a.clientImprovement.length ? 1 : 0);
   const urgencyMap: Record<string, number> = { agora: 5, "30-dias": 4, "3-meses": 3, avaliando: 1, "sem-prazo": 0 };
   const urgency = urgencyMap[a.urgency] ?? 0;
   const capacityMap: Record<string, number> = { "Somente eu": 5, Sócios: 3, "Diretor ou gestor": 3, "Equipe comercial": 2, "Equipe operacional": 2, "Ainda não sei": 1 };
@@ -287,7 +291,7 @@ function calculateDiagnosis(a: Answers): Diagnosis {
   const maturity = Math.max(4, Math.min(100, Math.round(((clarity + pain + structure + urgency + capacity) / 25) * 100)));
   const level = maturity <= 20 ? "Inicial" : maturity <= 40 ? "Emergente" : maturity <= 60 ? "Intermediário" : maturity <= 80 ? "Avançado" : "Estruturado";
 
-  const all = lower([a.challenge, a.bottleneck, a.experiment, a.objective, a.support, a.vulnerability].join(" "));
+  const all = lower([challengeText, bottleneckText, a.experiment, objectiveText, a.support.join(" "), a.vulnerability.join(" "), a.clientImprovement.join(" ")].join(" "));
   let segment = "Estratégia e Posicionamento";
   let solution = "Diagnóstico estratégico + definição de prioridades + proposta de valor.";
   if (all.includes("converter") || all.includes("follow-up") || all.includes("vendas") || all.includes("crm") || all.includes("comercial")) {
@@ -307,17 +311,17 @@ function calculateDiagnosis(a: Answers): Diagnosis {
     solution = "Processos escaláveis + captação contínua + estrutura de marketing.";
   }
 
-  const secondarySegment = a.bottleneck === "Vendas e follow-up" ? "Processo Comercial" : a.bottleneck === "Marketing e conteúdo" ? "Presença Digital" : a.clientImprovement ? "Experiência do Cliente" : "Estratégia e Posicionamento";
+  const secondarySegment = a.bottleneck.includes("Vendas e follow-up") ? "Processo Comercial" : a.bottleneck.includes("Marketing e conteúdo") ? "Presença Digital" : a.clientImprovement.length ? "Experiência do Cliente" : "Estratégia e Posicionamento";
   const highImpact = a.impact.some((item) => ["Perda de vendas", "Clientes desistindo", "Perda de oportunidades", "Dificuldade para crescer"].includes(item));
   const temperature = a.urgency === "agora" || a.urgency === "30-dias" || (highImpact && a.previousAttempts && !a.previousAttempts.includes("Ainda")) ? "Quente" : a.urgency === "3-meses" || a.impact.length > 0 ? "Morno" : "Frio";
   const priority = highImpact || a.urgency === "agora" || a.urgency === "30-dias" ? "Alta" : a.impact.length > 0 || a.challenge ? "Média" : "Baixa";
-  const challenge = a.challenge || "um desafio ainda não definido";
-  const bottleneck = a.bottleneck || "um processo que merece ser mapeado";
+  const challenge = challengeText || "um desafio ainda não definido";
+  const bottleneck = bottleneckText || "um processo que merece ser mapeado";
   const impact = a.impact.length ? a.impact.slice(0, 2).join(" e ") : "perda de energia e falta de previsibilidade";
   const summary = `Seu principal desafio parece estar em ${lower(challenge)}. Esse ponto se conecta a ${lower(bottleneck)} e hoje pode estar gerando ${lower(impact)}.`;
   const consequence = a.consequence.trim() || "Sem uma mudança clara, esse gargalo tende a continuar consumindo tempo e limitando o próximo nível de crescimento.";
   const direction = `O próximo passo é transformar essa clareza em uma estrutura de ${lower(segment)}. Vale investigar como o processo funciona hoje, onde as oportunidades se perdem e qual intervenção teria maior impacto com o menor esforço inicial.`;
-  const approach = `Perguntar como ${lower(bottleneck)} funciona atualmente, qual volume passa por esse ponto e o que precisaria acontecer para ${lower(a.objective || "o objetivo principal")}.`;
+  const approach = `Perguntar como ${lower(bottleneck)} funciona atualmente, qual volume passa por esse ponto e o que precisaria acontecer para ${lower(objectiveText || "o objetivo principal")}.`;
 
   return { maturity, level, temperature, priority, segment, secondarySegment, solution, summary, consequence, direction, approach };
 }
@@ -326,7 +330,7 @@ function getFieldValue(a: Answers, id: string) {
   return (a as unknown as Record<string, unknown>)[id] as string;
 }
 
-function Logo() {
+export function Logo() {
   return (
     <div className="brand-mark" aria-label="Diagnóstico 360">
       <span className="brand-bars"><i /><i /><i /></span>
@@ -335,10 +339,12 @@ function Logo() {
   );
 }
 
-function OptionGrid({ options, value, multiple = false, onChange }: { options: string[]; value: string | string[]; multiple?: boolean; onChange: (next: string | string[]) => void }) {
+function OptionGrid({ options, value, multiple = false, maxSelections, onChange }: { options: string[]; value: string | string[]; multiple?: boolean; maxSelections?: number; onChange: (next: string | string[]) => void }) {
   return (
-    <div className="option-grid">
-      {options.map((option) => {
+    <>
+      {multiple && maxSelections && <div className="selection-limit">Selecione até {maxSelections} opções</div>}
+      <div className="option-grid">
+        {options.map((option) => {
         const selected = multiple ? (value as string[]).includes(option) : value === option;
         return (
           <button
@@ -348,6 +354,10 @@ function OptionGrid({ options, value, multiple = false, onChange }: { options: s
             onClick={() => {
               if (multiple) {
                 const current = value as string[];
+                if (!selected && maxSelections && current.length >= maxSelections) {
+                  toast.info(`Você pode selecionar até ${maxSelections} opções.`);
+                  return;
+                }
                 onChange(selected ? current.filter((item) => item !== option) : [...current, option]);
               } else {
                 onChange(option);
@@ -359,8 +369,9 @@ function OptionGrid({ options, value, multiple = false, onChange }: { options: s
             <span>{option}</span>
           </button>
         );
-      })}
-    </div>
+        })}
+      </div>
+    </>
   );
 }
 
@@ -382,13 +393,28 @@ function TextArea({ label, value, onChange, placeholder, required = false }: { l
   );
 }
 
+function normalizeAnswers(saved: Partial<Answers>): Answers {
+  const listFields: Array<keyof Answers> = ["objective", "challenge", "bottleneck", "clientImprovement", "vulnerability", "support"];
+  const normalized = { ...initialAnswers, ...saved } as Answers;
+  for (const field of listFields) {
+    const value = normalized[field];
+    if (typeof value === "string") {
+      (normalized as unknown as Record<string, unknown>)[field] = value ? [value] : [];
+    } else if (!Array.isArray(value)) {
+      (normalized as unknown as Record<string, unknown>)[field] = [];
+    }
+  }
+  if (!Array.isArray(normalized.impact)) normalized.impact = normalized.impact ? [String(normalized.impact)] : [];
+  return normalized;
+}
+
 function Home() {
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? { ...initialAnswers, ...JSON.parse(saved) } : initialAnswers;
+      return saved ? normalizeAnswers(JSON.parse(saved) as Partial<Answers>) : initialAnswers;
     } catch {
       return initialAnswers;
     }
@@ -396,6 +422,11 @@ function Home() {
   const [result, setResult] = useState<Diagnosis | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const settingsQuery = trpc.settings.get.useQuery();
+  const saveLead = trpc.leads.create.useMutation({
+    onSuccess: () => toast.success("Diagnóstico salvo com sucesso."),
+    onError: () => toast.error("Não foi possível salvar o diagnóstico no momento."),
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
@@ -416,11 +447,11 @@ function Home() {
     if (step.id === "challenge") return answers.challenge;
     if (step.id === "impact") return answers.impact.length > 0;
     if (step.id === "bottleneck") return answers.bottleneck;
-    if (step.id === "client") return answers.clientImprovement;
+    if (step.id === "client") return answers.clientImprovement.length > 0;
     if (step.id === "future") return answers.futureVision.trim() && answers.futureObstacle.trim();
-    if (step.id === "vulnerability") return answers.vulnerability;
+    if (step.id === "vulnerability") return answers.vulnerability.length > 0;
     if (step.id === "experiment") return answers.experiment.trim();
-    if (step.id === "support") return answers.support;
+    if (step.id === "support") return answers.support.length > 0;
     if (step.id === "final") return answers.urgency && answers.decisionMakers;
     return true;
   };
@@ -435,6 +466,7 @@ function Home() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setResult(diagnosis);
+      saveLead.mutate({ answers, diagnosis });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -452,12 +484,17 @@ function Home() {
   const whatsAppMessage = `Olá! Fiz o diagnóstico do Diagnóstico 360. Meu principal objetivo é ${answers.objective || "entender meu próximo passo"}. Hoje, meu maior desafio está em ${answers.challenge || "organizar minhas prioridades"}. Quero conversar sobre uma direção mais específica para o meu caso.`;
 
   const copyInternal = async () => {
-    const internal = `NOVO DIAGNÓSTICO COMERCIAL\n\nLead: ${answers.name} — ${answers.company}\nSegmento: ${answers.segment}\nCargo: ${answers.role}\nWhatsApp: ${answers.whatsapp}\n\nObjetivo: ${answers.objective}\nDesafio: ${answers.challenge}\nCausa percebida: ${answers.challengeCause}\nImpacto: ${answers.impact.join(", ")}\nSe nada mudar: ${answers.consequence}\nGargalo: ${answers.bottleneck}\nImpacto no cliente: ${answers.clientComplaint}\nVisão de futuro: ${answers.futureVision}\nObstáculo futuro: ${answers.futureObstacle}\nVulnerabilidade: ${answers.vulnerability}\nO que gostaria de testar: ${answers.experiment}\nAjuda desejada: ${answers.support}\nUrgência: ${urgencyOptions.find((item) => item.value === answers.urgency)?.label}\nEnvolvidos: ${answers.decisionMakers}\nTentativas anteriores: ${answers.previousAttempts}\n\nMaturidade: ${diagnosis.maturity}% — ${diagnosis.level}\nSegmento recomendado: ${diagnosis.segment} + ${diagnosis.secondarySegment}\nTemperatura: ${diagnosis.temperature}\nPrioridade: ${diagnosis.priority}\nSolução inicial: ${diagnosis.solution}`;
+    const internal = `NOVO DIAGNÓSTICO COMERCIAL\n\nLead: ${answers.name} — ${answers.company}\nSegmento: ${answers.segment}\nCargo: ${answers.role}\nWhatsApp: ${answers.whatsapp}\n\nObjetivo: ${answers.objective}\nDesafio: ${answers.challenge}\nCausa percebida: ${answers.challengeCause}\nImpacto: ${answers.impact.join(", ")}\nSe nada mudar: ${answers.consequence}\nGargalo: ${answers.bottleneck}\nMelhorias para o cliente: ${answers.clientImprovement.join(", ")}\nImpacto no cliente: ${answers.clientComplaint}\nVisão de futuro: ${answers.futureVision}\nObstáculo futuro: ${answers.futureObstacle}\nVulnerabilidades: ${answers.vulnerability.join(", ")}\nO que gostaria de testar: ${answers.experiment}\nAjuda desejada: ${answers.support.join(", ")}\nUrgência: ${urgencyOptions.find((item) => item.value === answers.urgency)?.label}\nEnvolvidos: ${answers.decisionMakers}\nTentativas anteriores: ${answers.previousAttempts}\n\nMaturidade: ${diagnosis.maturity}% — ${diagnosis.level}\nSegmento recomendado: ${diagnosis.segment} + ${diagnosis.secondarySegment}\nTemperatura: ${diagnosis.temperature}\nPrioridade: ${diagnosis.priority}\nSolução inicial: ${diagnosis.solution}`;
     await navigator.clipboard.writeText(internal);
     setCopied(true);
     toast.success("Resumo interno copiado");
     window.setTimeout(() => setCopied(false), 2200);
   };
+
+  const destinationNumber = settingsQuery.data?.whatsappNumber?.replace(/\D/g, "");
+  const whatsAppUrl = destinationNumber
+    ? `https://wa.me/${destinationNumber}?text=${encodeURIComponent(whatsAppMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(whatsAppMessage)}`;
 
   if (!started) {
     return (
@@ -504,7 +541,7 @@ function Home() {
               <div className="direction-card"><div className="direction-heading"><div className="icon-tile cyan"><TrendingUp size={19} /></div><div><span className="section-kicker">Direção recomendada</span><h2>Onde investigar primeiro</h2></div></div><p>{diagnosis.direction}</p><div className="solution-line"><Lightbulb size={17} /><span><b>Solução inicial a investigar:</b> {diagnosis.solution}</span></div></div>
             </div>
           </div>
-          <div className="result-lower-grid"><div className="next-step-card card-surface"><div className="section-kicker"><MessageCircle size={16} /> Próximo passo</div><h2>Quer entender como isso se aplica ao seu caso?</h2><p>Este diagnóstico é um ponto de partida. Uma conversa rápida ajuda a mapear o processo atual e escolher a intervenção com mais impacto.</p><button className="primary-btn" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(whatsAppMessage)}`, "_blank")}><MessageCircle size={18} /> Quero conversar pelo WhatsApp</button><small>Mensagem pronta para você revisar antes de enviar.</small></div><div className="internal-card card-surface"><div className="section-kicker"><Clipboard size={16} /> Para sua análise</div><h3>Resumo comercial pronto</h3><p>Copie as respostas, a classificação e a recomendação para continuar o atendimento no seu CRM ou WhatsApp.</p><button className="secondary-btn" onClick={copyInternal}>{copied ? <Check size={17} /> : <Copy size={17} />} {copied ? "Copiado" : "Copiar resumo interno"}</button><div className="quick-read"><span><Users size={15} /> {answers.decisionMakers || "Decisor não informado"}</span><span><Clock3 size={15} /> {urgencyOptions.find((item) => item.value === answers.urgency)?.label || "Prazo não informado"}</span></div></div></div>
+          <div className="result-lower-grid"><div className="next-step-card card-surface"><div className="section-kicker"><MessageCircle size={16} /> Próximo passo</div><h2>Quer entender como isso se aplica ao seu caso?</h2><p>Este diagnóstico é um ponto de partida. Uma conversa rápida ajuda a mapear o processo atual e escolher a intervenção com mais impacto.</p><button className="primary-btn" onClick={() => window.open(whatsAppUrl, "_blank")}><MessageCircle size={18} /> Quero conversar pelo WhatsApp</button><small>Mensagem pronta para você revisar antes de enviar.</small></div><div className="internal-card card-surface"><div className="section-kicker"><Clipboard size={16} /> Para sua análise</div><h3>Resumo comercial pronto</h3><p>Copie as respostas, a classificação e a recomendação para continuar o atendimento no seu CRM ou WhatsApp.</p><button className="secondary-btn" onClick={copyInternal}>{copied ? <Check size={17} /> : <Copy size={17} />} {copied ? "Copiado" : "Copiar resumo interno"}</button><div className="quick-read"><span><Users size={15} /> {answers.decisionMakers || "Decisor não informado"}</span><span><Clock3 size={15} /> {urgencyOptions.find((item) => item.value === answers.urgency)?.label || "Prazo não informado"}</span></div></div></div>
           <div className="approach-note"><span className="note-number">02</span><div><b>Sugestão para a próxima conversa</b><p>{diagnosis.approach}</p></div><ChevronRight size={18} /></div>
         </section>
         <footer className="landing-footer result-footer"><span>Diagnóstico 360 · diagnóstico inicial</span><button className="subtle-btn" onClick={reset}>Começar novamente <ArrowRight size={14} /></button></footer>
@@ -522,15 +559,15 @@ function Home() {
         <div className="flow-grid"><aside className="flow-aside"><div className="aside-number">{String(stepIndex + 1).padStart(2, "0")}</div><span className="aside-label">{step.eyebrow.split(" / ")[1] || "Contexto"}</span><div className="aside-line" /><p>Quanto mais específico você for, mais útil será a leitura final.</p><div className="aside-footer"><Sparkles size={16} /> Suas respostas ficam neste dispositivo.</div></aside>
           <div className="question-panel"><div className="question-heading"><span className="eyebrow"><span className="eyebrow-dot" /> {step.eyebrow}</span><h1>{step.title}</h1><p>{step.description}</p></div>
             {step.id === "profile" && <div className="form-grid"><TextField label="Seu nome" value={answers.name} onChange={(v) => update("name", v)} placeholder="Como podemos chamar você?" required /><TextField label="Nome da empresa" value={answers.company} onChange={(v) => update("company", v)} placeholder="Ex.: Studio Forma" required /><TextField label="WhatsApp" value={answers.whatsapp} onChange={(v) => update("whatsapp", v)} placeholder="(00) 00000-0000" required type="tel" /><TextField label="E-mail" value={answers.email} onChange={(v) => update("email", v)} placeholder="voce@empresa.com" type="email" /><TextField label="Segmento do negócio" value={answers.segment} onChange={(v) => update("segment", v)} placeholder="Ex.: Saúde, varejo, serviços..." /><TextField label="Cargo ou função" value={answers.role} onChange={(v) => update("role", v)} placeholder="Ex.: Sócio, diretora, gerente..." /></div>}
-            {step.id === "objective" && <><OptionGrid options={objectiveOptions} value={answers.objective} onChange={(v) => update("objective", v as string)} /><TextArea label="Explique brevemente esse objetivo" value={answers.objectiveDetails} onChange={(v) => update("objectiveDetails", v)} placeholder="O que você gostaria de ver diferente daqui a 12 meses?" /></>}
-            {step.id === "challenge" && <><OptionGrid options={challengeOptions} value={answers.challenge} onChange={(v) => update("challenge", v as string)} /><TextArea label="O que você acredita que está causando esse problema?" value={answers.challengeCause} onChange={(v) => update("challengeCause", v)} placeholder="Conte o que você já percebeu na prática..." /></>}
-            {step.id === "impact" && <><OptionGrid options={impactOptions} value={answers.impact} multiple onChange={(v) => update("impact", v)} /><TextArea label="Se nada mudar nos próximos 12 meses, o que pode acontecer?" value={answers.consequence} onChange={(v) => update("consequence", v)} placeholder="Imagine a consequência mais provável..." /></>}
-            {step.id === "bottleneck" && <><OptionGrid options={bottleneckOptions} value={answers.bottleneck} onChange={(v) => update("bottleneck", v as string)} /><TextArea label="Como esse processo funciona hoje?" value={answers.bottleneckDetails} onChange={(v) => update("bottleneckDetails", v)} placeholder="Descreva o caminho atual, mesmo que seja informal..." /></>}
-            {step.id === "client" && <><OptionGrid options={improvementOptions} value={answers.clientImprovement} onChange={(v) => update("clientImprovement", v as string)} /><TextArea label="Qual é a principal reclamação, dificuldade ou expectativa dos seus clientes?" value={answers.clientComplaint} onChange={(v) => update("clientComplaint", v)} placeholder="O que seus clientes mais pedem, questionam ou esperam?" /></>}
+            {step.id === "objective" && <><OptionGrid options={objectiveOptions} value={answers.objective} multiple maxSelections={3} onChange={(v) => update("objective", v)} /><TextArea label="Explique brevemente esse objetivo" value={answers.objectiveDetails} onChange={(v) => update("objectiveDetails", v)} placeholder="O que você gostaria de ver diferente daqui a 12 meses?" /></>}
+            {step.id === "challenge" && <><OptionGrid options={challengeOptions} value={answers.challenge} multiple maxSelections={3} onChange={(v) => update("challenge", v)} /><TextArea label="O que você acredita que está causando esse problema?" value={answers.challengeCause} onChange={(v) => update("challengeCause", v)} placeholder="Conte o que você já percebeu na prática..." /></>}
+            {step.id === "impact" && <><OptionGrid options={impactOptions} value={answers.impact} multiple maxSelections={3} onChange={(v) => update("impact", v)} /><TextArea label="Se nada mudar nos próximos 12 meses, o que pode acontecer?" value={answers.consequence} onChange={(v) => update("consequence", v)} placeholder="Imagine a consequência mais provável..." /></>}
+            {step.id === "bottleneck" && <><OptionGrid options={bottleneckOptions} value={answers.bottleneck} multiple maxSelections={3} onChange={(v) => update("bottleneck", v)} /><TextArea label="Como esse processo funciona hoje?" value={answers.bottleneckDetails} onChange={(v) => update("bottleneckDetails", v)} placeholder="Descreva o caminho atual, mesmo que seja informal..." /></>}
+            {step.id === "client" && <><OptionGrid options={improvementOptions} value={answers.clientImprovement} multiple maxSelections={3} onChange={(v) => update("clientImprovement", v)} /><TextArea label="Qual é a principal reclamação, dificuldade ou expectativa dos seus clientes?" value={answers.clientComplaint} onChange={(v) => update("clientComplaint", v)} placeholder="O que seus clientes mais pedem, questionam ou esperam?" /></>}
             {step.id === "future" && <><TextArea label="Como seria o sucesso da sua empresa?" value={answers.futureVision} onChange={(v) => update("futureVision", v)} placeholder="Imagine sua operação, clientes, equipe e rotina no melhor cenário..." required /><TextArea label="Qual é o maior obstáculo entre sua situação atual e esse futuro?" value={answers.futureObstacle} onChange={(v) => update("futureObstacle", v)} placeholder="O que ainda precisaria mudar para chegar lá?" required /></>}
-            {step.id === "vulnerability" && <OptionGrid options={vulnerabilityOptions} value={answers.vulnerability} onChange={(v) => update("vulnerability", v as string)} />}
+            {step.id === "vulnerability" && <OptionGrid options={vulnerabilityOptions} value={answers.vulnerability} multiple maxSelections={3} onChange={(v) => update("vulnerability", v)} />}
             {step.id === "experiment" && <><TextArea label="O que você gostaria de testar?" value={answers.experiment} onChange={(v) => update("experiment", v)} placeholder="Ex.: criar um site, investir em anúncios, automatizar o atendimento..." required /><TextArea label="O que impediu você de fazer isso até agora?" value={answers.experimentBarrier} onChange={(v) => update("experimentBarrier", v)} placeholder="Tempo, equipe, investimento, conhecimento ou prioridade?" /></>}
-            {step.id === "support" && <OptionGrid options={supportOptions} value={answers.support} onChange={(v) => update("support", v as string)} />}
+            {step.id === "support" && <OptionGrid options={supportOptions} value={answers.support} multiple maxSelections={3} onChange={(v) => update("support", v)} />}
             {step.id === "final" && <><div className="final-section"><span className="field-label"><span>Qual é o nível de urgência para resolver esse problema? <b>*</b></span></span><OptionGrid options={urgencyOptions.map((item) => item.label)} value={urgencyOptions.find((item) => item.value === answers.urgency)?.label || ""} onChange={(v) => update("urgency", urgencyOptions.find((item) => item.label === v)?.value || "")} /></div><div className="final-section"><span className="field-label"><span>Além de você, quem participa dessa decisão? <b>*</b></span></span><OptionGrid options={decisionOptions} value={answers.decisionMakers} onChange={(v) => update("decisionMakers", v as string)} /></div><div className="final-section"><span className="field-label"><span>Você já tentou resolver esse problema antes?</span></span><OptionGrid options={attemptOptions} value={answers.previousAttempts} onChange={(v) => update("previousAttempts", v as string)} /></div></>}
             {error && <div className="form-error" role="alert"><Zap size={15} /> {error}</div>}
             <div className="question-footer"><button className="back-btn" onClick={() => stepIndex === 0 ? setStarted(false) : setStepIndex((current) => current - 1)}><ArrowLeft size={17} /> Voltar</button><button className="primary-btn" onClick={next}>{stepIndex === steps.length - 1 ? <><span>Ver meu diagnóstico</span><Sparkles size={17} /></> : <><span>Continuar</span><ArrowRight size={17} /></>}</button></div>
