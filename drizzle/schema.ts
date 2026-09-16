@@ -1,28 +1,30 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, serial } from "drizzle-orm/pg-core";
+
+export const roleEnum = pgEnum("role", ["user", "admin"]);
 
 /** Core user table backing the Manus auth flow. */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 /** One-row configuration controlled by an authenticated administrator. */
-export const appSettings = mysqlTable("appSettings", {
-  id: int("id").autoincrement().primaryKey(),
+export const appSettings = pgTable("appSettings", {
+  id: serial("id").primaryKey(),
   whatsappNumber: varchar("whatsappNumber", { length: 32 }).notNull().default(""),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 /** Immutable lead snapshot: answers and diagnosis are stored as JSON text for auditability. */
-export const leads = mysqlTable("leads", {
-  id: int("id").autoincrement().primaryKey(),
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 160 }).notNull(),
   company: varchar("company", { length: 200 }).notNull(),
   segment: varchar("segment", { length: 160 }),
@@ -31,7 +33,7 @@ export const leads = mysqlTable("leads", {
   email: varchar("email", { length: 320 }),
   objective: text("objective"),
   challenge: text("challenge"),
-  maturity: int("maturity"),
+  maturity: integer("maturity"),
   level: varchar("level", { length: 40 }),
   temperature: varchar("temperature", { length: 40 }),
   priority: varchar("priority", { length: 40 }),

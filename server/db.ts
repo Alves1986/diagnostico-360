@@ -1,14 +1,17 @@
 import { desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { appSettings, InsertLead, InsertUser, leads, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _client: postgres.Sql | null = null;
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db && process.env.POSTGRES_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _client = postgres(process.env.POSTGRES_URL);
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -25,7 +28,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
   const textFields = ["name", "email", "loginMethod"] as const;
-  type TextField = (typeof textFields)[number];
 
   for (const field of textFields) {
     const value = user[field];
@@ -49,7 +51,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
 
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db.insert(users).values(values).onConflictDoUpdate({
+    target: users.openId,
+    set: updateSet
+  });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -81,8 +86,8 @@ export async function saveAppSettings(whatsappNumber: string) {
 export async function insertLead(lead: InsertLead) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(leads).values(lead);
-  return { id: Number(result[0].insertId) };
+  const result = await db.insert(leads).values(lead).returning({ id: leads.id });
+  return { id: Number(result[0].id) };
 }
 
 export async function listLeads() {

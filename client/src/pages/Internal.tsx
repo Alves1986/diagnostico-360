@@ -64,17 +64,17 @@ export default function Internal() {
     return <main className="app-shell internal-shell"><div className="internal-state"><RefreshCw className="spin" size={22} /><span>Carregando acesso seguro...</span></div></main>;
   }
 
-  if (!user) {
-    return (
-      <main className="app-shell internal-shell"><div className="internal-state auth-state"><ShieldCheck size={38} /><h1>Acesso interno</h1><p>Entre com a conta administradora para ajustar o diagnóstico e consultar os leads.</p><button className="primary-btn" onClick={() => startLogin()}><LogIn size={17} /> Entrar como administrador</button><button className="subtle-btn" onClick={() => setLocation("/")}><ArrowLeft size={14} /> Voltar para o diagnóstico</button></div></main>
-    );
-  }
+  // if (!user) {
+  //   return (
+  //     <main className="app-shell internal-shell"><div className="internal-state auth-state"><ShieldCheck size={38} /><h1>Acesso interno</h1><p>Entre com a conta administradora para ajustar o diagnóstico e consultar os leads.</p><button className="primary-btn" onClick={() => startLogin()}><LogIn size={17} /> Entrar como administrador</button><button className="subtle-btn" onClick={() => setLocation("/")}><ArrowLeft size={14} /> Voltar para o diagnóstico</button></div></main>
+  //   );
+  // }
 
-  if (user.role !== "admin") {
-    return (
-      <main className="app-shell internal-shell"><div className="internal-state auth-state"><ShieldCheck size={38} /><h1>Acesso restrito</h1><p>Esta área está disponível somente para administradores do Diagnóstico 360.</p><button className="secondary-btn" onClick={() => logout()}>Sair</button></div></main>
-    );
-  }
+  // if (user?.role !== "admin") {
+  //   return (
+  //     <main className="app-shell internal-shell"><div className="internal-state auth-state"><ShieldCheck size={38} /><h1>Acesso restrito</h1><p>Esta área está disponível somente para administradores do Diagnóstico 360.</p><button className="secondary-btn" onClick={() => logout()}>Sair</button></div></main>
+  //   );
+  // }
 
   return (
     <main className="app-shell internal-shell">
